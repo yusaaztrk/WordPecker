@@ -182,7 +182,7 @@ const HomeScreen = () => {
     return (
       <View style={styles.container}>
         <Text style={styles.instructions}>
-          Bu proje 12 özellik için yer tutucu ekranlar içermektedir.
+          Bu proje 13qw özellik için yer tutucu ekranlar içermektedir.
           Göreviniz temel özellikleri uygulamak ve 2 yenilikçi özellik geliştirmektir.
           Özellik açıklaması ve gereksinimlerini görmek için her bir düğmeye tıklayın.
         </Text>
@@ -220,7 +220,7 @@ const HomeScreen = () => {
     >
       {/* Mobil için mevcut içerik */}
       <Text style={styles.instructions}>
-        Bu proje 12 özellik için yer tutucu ekranlar içermektedir.
+        Bu proje 13 özellik için yer tutucu ekranlar içermektedir.
         Göreviniz temel özellikleri uygulamak ve 2 yenilikçi özellik geliştirmektir.
         Özellik açıklaması ve gereksinimlerini görmek için her bir düğmeye tıklayın.
       </Text>
