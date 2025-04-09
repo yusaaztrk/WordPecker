@@ -78,7 +78,7 @@ const features = [
   },
   {
     id: 6,
-    name: 'Test Modu',
+    name: 'Test Modu2',
     description: 'Liste kelimelerini daha zorlu bir test formatıyla sınama.',
     expectedFunctionality: [
       'Öğrenme modundan daha zorlu sorular',
