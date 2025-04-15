@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/components/ThemeProvider';
 import { useWordListStore } from '@/store/wordListStore';
 import { useLearningStore } from '@/store/learningStore';
-import { getWords } from '@/firebase/words';
+import { getWordsInList } from '@/firebase/wordLists';
 import Button from '@/components/Button';
 import ProgressBar from '@/components/ProgressBar';
 import { ArrowLeft, Volume2, Check, X, ChevronRight, Clock } from 'lucide-react-native';
@@ -14,13 +14,13 @@ export default function TestScreen() {
   const { listId } = useLocalSearchParams<{ listId: string }>();
   const router = useRouter();
   const { colors } = useTheme();
-  const { fetchList } = useWordListStore();
+  const { fetchListById } = useWordListStore();
   const { startSession, completeSession } = useLearningStore();
-  
+
   const [list, setList] = useState<any>(null);
   const [words, setWords] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Test session state
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -32,32 +32,38 @@ export default function TestScreen() {
   const [sessionComplete, setSessionComplete] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30); // 30 seconds per question
   const [timerActive, setTimerActive] = useState(false);
-  
+
   useEffect(() => {
     if (!listId) return;
-    
+
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const listData = await fetchList(listId);
+        const listData = await fetchListById(listId);
         setList(listData);
-        
-        const wordsData = await getWords(listId);
+
+        const wordsData = await getWordsInList(listId);
         if (wordsData.length === 0) {
           Alert.alert('Uyarı', 'Bu listede kelime bulunmuyor', [
             { text: 'Tamam', onPress: () => router.back() }
           ]);
           return;
         }
-        
+
         // Shuffle words for testing
         const shuffledWords = [...wordsData].sort(() => Math.random() - 0.5);
         setWords(shuffledWords);
-        
+
         // Start test session
-        const session = await startSession(listId, 'test', shuffledWords.map(w => w.id));
+        const session = await startSession({
+          listId,
+          mode: 'test',
+          wordsStudied: shuffledWords.length,
+          correctAnswers: 0,
+          incorrectAnswers: 0
+        });
         setSessionId(session);
-        
+
       } catch (error) {
         console.error('Error loading test data:', error);
         Alert.alert('Hata', 'Test verileri yüklenirken bir hata oluştu');
@@ -66,14 +72,14 @@ export default function TestScreen() {
         setTimerActive(true);
       }
     };
-    
+
     loadData();
   }, [listId]);
-  
+
   // Timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (timerActive && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft(prev => prev - 1);
@@ -81,32 +87,32 @@ export default function TestScreen() {
     } else if (timeLeft === 0 && !showAnswer) {
       handleCheckAnswer();
     }
-    
+
     return () => clearInterval(interval);
   }, [timerActive, timeLeft]);
-  
+
   const handleCheckAnswer = () => {
     setTimerActive(false);
-    
+
     const currentWord = words[currentIndex];
     const normalizedUserAnswer = userAnswer.trim().toLowerCase();
     const normalizedCorrectAnswer = currentWord.definition.trim().toLowerCase();
-    
+
     // Check if answer is correct (simple string comparison)
     const isAnswerCorrect = normalizedUserAnswer === normalizedCorrectAnswer;
-    
+
     setIsCorrect(isAnswerCorrect);
     setShowAnswer(true);
-    
+
     if (isAnswerCorrect) {
       setCorrectAnswers(prev => prev + 1);
     }
-    
+
     // Record result
     const previousMastery = currentWord.mastery || 0;
     const masteryChange = isAnswerCorrect ? 15 : -8; // Higher stakes in test mode
     const newMastery = Math.max(0, Math.min(100, previousMastery + masteryChange));
-    
+
     setWordResults([
       ...wordResults,
       {
@@ -117,7 +123,7 @@ export default function TestScreen() {
       }
     ]);
   };
-  
+
   const handleNext = () => {
     if (currentIndex < words.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -129,33 +135,37 @@ export default function TestScreen() {
     } else {
       // Session complete
       setSessionComplete(true);
-      
+
       // Complete session in backend
       if (sessionId) {
         completeSession(sessionId, {
-          totalQuestions: words.length,
+          duration: 0,
+          wordsStudied: words.length,
           correctAnswers,
-          wordResults,
+          incorrectAnswers: words.length - correctAnswers,
+          score: Math.round((correctAnswers / words.length) * 100)
         });
       }
     }
   };
-  
+
   const handleExit = () => {
     Alert.alert(
       'Çıkış Yap',
       'Test oturumundan çıkmak istediğinize emin misiniz?',
       [
         { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Çıkış', 
+        {
+          text: 'Çıkış',
           onPress: () => {
             // Complete session if not already completed
             if (sessionId && !sessionComplete) {
               completeSession(sessionId, {
-                totalQuestions: currentIndex + 1,
+                duration: 0,
+                wordsStudied: currentIndex + 1,
                 correctAnswers,
-                wordResults,
+                incorrectAnswers: (currentIndex + 1) - correctAnswers,
+                score: Math.round((correctAnswers / (currentIndex + 1)) * 100)
               });
             }
             router.back();
@@ -164,7 +174,7 @@ export default function TestScreen() {
       ]
     );
   };
-  
+
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -172,11 +182,11 @@ export default function TestScreen() {
       </View>
     );
   }
-  
+
   if (sessionComplete) {
     const score = Math.round((correctAnswers / words.length) * 100);
     let feedback = '';
-    
+
     if (score >= 90) {
       feedback = 'Mükemmel! Harika bir performans gösterdiniz.';
     } else if (score >= 70) {
@@ -186,23 +196,23 @@ export default function TestScreen() {
     } else {
       feedback = 'Bu kelimeleri biraz daha çalışmanız gerekiyor.';
     }
-    
+
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.completionContainer}>
           <Text style={[styles.completionTitle, { color: colors.text }]}>
             Test Tamamlandı
           </Text>
-          
+
           <Text style={[styles.completionSubtitle, { color: colors.textSecondary }]}>
             {feedback}
           </Text>
-          
+
           <View style={[styles.scoreCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.scoreTitle, { color: colors.text }]}>
               Test Sonuçları
             </Text>
-            
+
             <View style={styles.scoreRow}>
               <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
                 Toplam Soru:
@@ -211,7 +221,7 @@ export default function TestScreen() {
                 {words.length}
               </Text>
             </View>
-            
+
             <View style={styles.scoreRow}>
               <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
                 Doğru Cevap:
@@ -220,14 +230,14 @@ export default function TestScreen() {
                 {correctAnswers}
               </Text>
             </View>
-            
+
             <View style={styles.scoreRow}>
               <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
                 Başarı Puanı:
               </Text>
-              <Text 
+              <Text
                 style={[
-                  styles.scoreValue, 
+                  styles.scoreValue,
                   { color: getScoreColor(score, colors) }
                 ]}
               >
@@ -235,7 +245,7 @@ export default function TestScreen() {
               </Text>
             </View>
           </View>
-          
+
           <View style={styles.completionButtons}>
             <Button
               title="Listeye Dön"
@@ -243,7 +253,7 @@ export default function TestScreen() {
               onPress={() => router.replace(`/list/${listId}`)}
               style={styles.completionButton}
             />
-            
+
             <Button
               title="Tekrar Test Et"
               onPress={() => router.replace(`/test/${listId}`)}
@@ -254,17 +264,17 @@ export default function TestScreen() {
       </SafeAreaView>
     );
   }
-  
+
   const currentWord = words[currentIndex];
   const progress = (currentIndex + 1) / words.length;
-  
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleExit}>
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        
+
         <View style={styles.progressContainer}>
           <Text style={[styles.progressText, { color: colors.textSecondary }]}>
             {currentIndex + 1} / {words.length}
@@ -272,32 +282,32 @@ export default function TestScreen() {
           <ProgressBar progress={progress} height={4} />
         </View>
       </View>
-      
+
       <View style={styles.content}>
         <View style={styles.timerContainer}>
           <Clock size={20} color={timeLeft < 10 ? colors.error : colors.textSecondary} />
-          <Text 
+          <Text
             style={[
-              styles.timerText, 
-              { 
-                color: timeLeft < 10 ? colors.error : colors.textSecondary 
+              styles.timerText,
+              {
+                color: timeLeft < 10 ? colors.error : colors.textSecondary
               }
             ]}
           >
             {timeLeft} saniye
           </Text>
         </View>
-        
+
         <View style={[styles.wordCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.wordLabel, { color: colors.textSecondary }]}>
             {list?.targetLanguage} Kelime:
           </Text>
-          
+
           <View style={styles.wordContainer}>
             <Text style={[styles.word, { color: colors.text }]}>
               {currentWord.term}
             </Text>
-            
+
             {currentWord.pronunciation && (
               <TouchableOpacity style={styles.pronunciationButton}>
                 <Volume2 size={20} color={colors.primary} />
@@ -305,18 +315,18 @@ export default function TestScreen() {
             )}
           </View>
         </View>
-        
+
         <Text style={[styles.questionText, { color: colors.text }]}>
           Bu kelimenin anlamını yazın:
         </Text>
-        
+
         <View style={styles.answerContainer}>
           <TextInput
             style={[
               styles.answerInput,
-              { 
+              {
                 backgroundColor: colors.card,
-                borderColor: showAnswer 
+                borderColor: showAnswer
                   ? (isCorrect ? colors.success : colors.error)
                   : colors.border,
                 color: colors.text,
@@ -329,7 +339,7 @@ export default function TestScreen() {
             editable={!showAnswer}
             multiline
           />
-          
+
           {!showAnswer && (
             <Button
               title="Kontrol Et"
@@ -338,11 +348,11 @@ export default function TestScreen() {
             />
           )}
         </View>
-        
+
         {showAnswer && (
           <View style={[
             styles.resultContainer,
-            { 
+            {
               backgroundColor: isCorrect ? colors.success + '20' : colors.error + '20',
               borderColor: isCorrect ? colors.success : colors.error,
             }
@@ -360,7 +370,7 @@ export default function TestScreen() {
                 {isCorrect ? 'Doğru!' : 'Yanlış!'}
               </Text>
             </View>
-            
+
             {!isCorrect && (
               <View style={styles.correctAnswerContainer}>
                 <Text style={[styles.correctAnswerLabel, { color: colors.textSecondary }]}>
@@ -371,7 +381,7 @@ export default function TestScreen() {
                 </Text>
               </View>
             )}
-            
+
             {currentWord.example && (
               <View style={styles.exampleContainer}>
                 <Text style={[styles.exampleLabel, { color: colors.textSecondary }]}>
@@ -385,7 +395,7 @@ export default function TestScreen() {
           </View>
         )}
       </View>
-      
+
       <View style={styles.footer}>
         {showAnswer && (
           <Button

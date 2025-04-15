@@ -9,22 +9,13 @@ import {
   deleteList,
   addWordToList,
   getWordsInList,
-  deleteWord
+  deleteWord,
+  updateWord,
+  Word as FirebaseWord
 } from '@/firebase/wordLists';
 import { useAuthStore } from './authStore';
 
-export interface Word {
-  id: string;
-  term: string;
-  definition: string;
-  example?: string;
-  notes?: string;
-  pronunciation?: string;
-  imageUrl?: string;
-  listId?: string;
-  createdAt: number;
-  updatedAt: number;
-}
+export type Word = FirebaseWord;
 
 export interface WordList {
   id: string;
@@ -56,7 +47,7 @@ interface WordListState {
   // Word operations
   fetchWordsInList: (listId: string) => Promise<Word[]>;
   addWord: (listId: string, word: Omit<Word, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
-  updateWordDetails: (listId: string, wordId: string, updates: Partial<Omit<Word, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
+  updateWordDetails: (wordId: string, updates: Partial<Word>) => Promise<void>;
   removeWord: (listId: string, wordId: string) => Promise<void>;
 
   // State management
@@ -83,44 +74,10 @@ export const useWordListStore = create<WordListState>()(
 
         set({ isLoading: true, error: null });
         try {
-          try {
-            // Önce normal yoldan verileri almayı dene
-            const lists = await getLists(user.uid);
-            set({ lists, isLoading: false });
-          } catch (firebaseError: any) {
-            console.log('Firebase veri alma hatası, test verileri kullanılıyor:', firebaseError.message);
-
-            // GELİŞTİRME MODU: Test verileri
-            const testLists = [
-              {
-                id: 'list1',
-                name: 'İngilizce Günlük Konuşma',
-                description: 'Günlük hayatta sık kullanılan İngilizce kelimeler',
-                language: 'Türkçe',
-                targetLanguage: 'İngilizce',
-                tags: ['günlük', 'temel'],
-                wordCount: 25,
-                createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000, // 1 hafta önce
-                updatedAt: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 gün önce
-                userId: user.uid
-              },
-              {
-                id: 'list2',
-                name: 'İş İngilizcesi',
-                description: 'İş hayatında kullanılan terimler',
-                language: 'Türkçe',
-                targetLanguage: 'İngilizce',
-                tags: ['iş', 'profesyonel'],
-                wordCount: 15,
-                createdAt: Date.now() - 14 * 24 * 60 * 60 * 1000, // 2 hafta önce
-                updatedAt: Date.now() - 5 * 24 * 60 * 60 * 1000, // 5 gün önce
-                userId: user.uid
-              }
-            ];
-
-            set({ lists: testLists, isLoading: false });
-          }
+          const lists = await getLists(user.uid);
+          set({ lists, isLoading: false });
         } catch (error) {
+          console.error('Listeler alınırken hata:', error);
           set({
             error: error instanceof Error ? error.message : 'Failed to fetch lists',
             isLoading: false
@@ -181,11 +138,12 @@ export const useWordListStore = create<WordListState>()(
             list.id === id ? { ...list, ...updates, updatedAt: Date.now() } : list
           );
 
+          const currentList = get().currentList;
           set({
             lists: updatedLists,
-            currentList: get().currentList?.id === id
-              ? { ...get().currentList, ...updates, updatedAt: Date.now() }
-              : get().currentList,
+            currentList: currentList?.id === id
+              ? { ...currentList, ...updates, updatedAt: Date.now() }
+              : currentList,
             isLoading: false
           });
         } catch (error) {
@@ -223,84 +181,11 @@ export const useWordListStore = create<WordListState>()(
       fetchWordsInList: async (listId) => {
         set({ isLoading: true, error: null });
         try {
-          try {
-            // Önce normal yoldan verileri almayı dene
-            const words = await getWordsInList(listId);
-            set({ currentWords: words, isLoading: false });
-            return words;
-          } catch (firebaseError: any) {
-            console.log('Firebase kelime alma hatası, test verileri kullanılıyor:', firebaseError.message);
-
-            // GELİŞTİRME MODU: Test verileri
-            let testWords: Word[] = [];
-
-            if (listId === 'list1') {
-              testWords = [
-                {
-                  id: 'word1',
-                  term: 'hello',
-                  definition: 'merhaba',
-                  example: 'Hello, how are you today?',
-                  notes: 'Selamlama ifadesi',
-                  pronunciation: 'he-lo',
-                  createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000,
-                  updatedAt: Date.now() - 5 * 24 * 60 * 60 * 1000,
-                  listId: 'list1'
-                },
-                {
-                  id: 'word2',
-                  term: 'goodbye',
-                  definition: 'hoşçakal',
-                  example: 'Goodbye, see you tomorrow!',
-                  notes: 'Veda ifadesi',
-                  pronunciation: 'gud-bay',
-                  createdAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
-                  updatedAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
-                  listId: 'list1'
-                },
-                {
-                  id: 'word3',
-                  term: 'thank you',
-                  definition: 'teşekkür ederim',
-                  example: 'Thank you for your help.',
-                  notes: 'Teşekkür ifadesi',
-                  pronunciation: 'thenk-yu',
-                  createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
-                  updatedAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
-                  listId: 'list1'
-                }
-              ];
-            } else if (listId === 'list2') {
-              testWords = [
-                {
-                  id: 'word4',
-                  term: 'meeting',
-                  definition: 'toplantı',
-                  example: 'We have a meeting at 2 PM.',
-                  notes: 'İş ortamında sık kullanılır',
-                  pronunciation: 'mi-ting',
-                  createdAt: Date.now() - 10 * 24 * 60 * 60 * 1000,
-                  updatedAt: Date.now() - 10 * 24 * 60 * 60 * 1000,
-                  listId: 'list2'
-                },
-                {
-                  id: 'word5',
-                  term: 'deadline',
-                  definition: 'son teslim tarihi',
-                  example: 'The deadline for this project is next Friday.',
-                  notes: 'Proje yönetiminde önemli bir terim',
-                  pronunciation: 'ded-layn',
-                  createdAt: Date.now() - 9 * 24 * 60 * 60 * 1000,
-                  updatedAt: Date.now() - 9 * 24 * 60 * 60 * 1000,
-                  listId: 'list2'
-                }
-              ];
-            }
-
-            set({ currentWords: testWords, isLoading: false });
-            return testWords;
-          }
+          const words = await getWordsInList(listId);
+          set({ currentWords: words, isLoading: false });
+          return words;
         } catch (error) {
+          console.error('Kelimeler alınırken hata:', error);
           set({
             error: error instanceof Error ? error.message : 'Failed to fetch words',
             isLoading: false
@@ -342,12 +227,10 @@ export const useWordListStore = create<WordListState>()(
         }
       },
 
-      updateWordDetails: async (listId, wordId, updates) => {
+      updateWordDetails: async (wordId, updates: Partial<Word>) => {
         set({ isLoading: true, error: null });
         try {
-          // GELİŞTİRME MODU: Firebase fonksiyonu yerine doğrudan güncelleme yap
-          // await updateWord(listId, wordId, updates);
-          console.log('Kelime güncelleniyor:', { listId, wordId, updates });
+          await updateWord(wordId, updates);
 
           // Update local state
           const updatedWords = get().currentWords.map(word =>

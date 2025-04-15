@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/components/ThemeProvider';
 import { useWordListStore } from '@/store/wordListStore';
 import { useLearningStore } from '@/store/learningStore';
-import { getWords } from '@/firebase/words';
+import { getWordsInList } from '@/firebase/wordLists';
 import Button from '@/components/Button';
 import ProgressBar from '@/components/ProgressBar';
 import { ArrowLeft, Volume2, Check, X, ChevronRight } from 'lucide-react-native';
@@ -16,13 +16,13 @@ export default function LearnScreen() {
   const { listId } = useLocalSearchParams<{ listId: string }>();
   const router = useRouter();
   const { colors } = useTheme();
-  const { fetchList } = useWordListStore();
+  const { fetchListById } = useWordListStore();
   const { startSession, completeSession } = useLearningStore();
-  
+
   const [list, setList] = useState<any>(null);
   const [words, setWords] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Learning session state
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -33,32 +33,38 @@ export default function LearnScreen() {
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [wordResults, setWordResults] = useState<any[]>([]);
   const [sessionComplete, setSessionComplete] = useState(false);
-  
+
   useEffect(() => {
     if (!listId) return;
-    
+
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const listData = await fetchList(listId);
+        const listData = await fetchListById(listId);
         setList(listData);
-        
-        const wordsData = await getWords(listId);
+
+        const wordsData = await getWordsInList(listId);
         if (wordsData.length === 0) {
           Alert.alert('Uyarı', 'Bu listede kelime bulunmuyor', [
             { text: 'Tamam', onPress: () => router.back() }
           ]);
           return;
         }
-        
+
         // Shuffle words for learning
         const shuffledWords = [...wordsData].sort(() => Math.random() - 0.5);
         setWords(shuffledWords);
-        
+
         // Start learning session
-        const session = await startSession(listId, 'learn', shuffledWords.map(w => w.id));
+        const session = await startSession({
+          listId,
+          mode: 'learn',
+          wordsStudied: shuffledWords.length,
+          correctAnswers: 0,
+          incorrectAnswers: 0
+        });
         setSessionId(session);
-        
+
         // Generate options for first word
         generateOptions(shuffledWords, 0);
       } catch (error) {
@@ -68,50 +74,50 @@ export default function LearnScreen() {
         setIsLoading(false);
       }
     };
-    
+
     loadData();
   }, [listId]);
-  
+
   const generateOptions = (wordsList: any[], index: number) => {
     const correctWord = wordsList[index];
-    
+
     // Get 3 random incorrect options
     const incorrectOptions: string[] = [];
     const availableWords = wordsList.filter(w => w.id !== correctWord.id);
-    
+
     while (incorrectOptions.length < 3 && availableWords.length > 0) {
       const randomIndex = Math.floor(Math.random() * availableWords.length);
       incorrectOptions.push(availableWords[randomIndex].definition);
       availableWords.splice(randomIndex, 1);
     }
-    
+
     // Add correct option and shuffle
     const allOptions = [...incorrectOptions, correctWord.definition];
     const shuffledOptions = allOptions.sort(() => Math.random() - 0.5);
-    
+
     setOptions(shuffledOptions);
   };
-  
+
   const handleOptionSelect = (index: number) => {
     if (showAnswer) return;
-    
+
     const currentWord = words[currentIndex];
     const selectedDefinition = options[index];
     const isAnswerCorrect = selectedDefinition === currentWord.definition;
-    
+
     setSelectedOption(index);
     setIsCorrect(isAnswerCorrect);
     setShowAnswer(true);
-    
+
     if (isAnswerCorrect) {
       setCorrectAnswers(prev => prev + 1);
     }
-    
+
     // Record result
     const previousMastery = currentWord.mastery || 0;
     const masteryChange = isAnswerCorrect ? 10 : -5;
     const newMastery = Math.max(0, Math.min(100, previousMastery + masteryChange));
-    
+
     setWordResults([
       ...wordResults,
       {
@@ -122,7 +128,7 @@ export default function LearnScreen() {
       }
     ]);
   };
-  
+
   const handleNext = () => {
     if (currentIndex < words.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -133,33 +139,37 @@ export default function LearnScreen() {
     } else {
       // Session complete
       setSessionComplete(true);
-      
+
       // Complete session in backend
       if (sessionId) {
         completeSession(sessionId, {
-          totalQuestions: words.length,
+          duration: 0,
+          wordsStudied: words.length,
           correctAnswers,
-          wordResults,
+          incorrectAnswers: words.length - correctAnswers,
+          score: Math.round((correctAnswers / words.length) * 100)
         });
       }
     }
   };
-  
+
   const handleExit = () => {
     Alert.alert(
       'Çıkış Yap',
       'Öğrenme oturumundan çıkmak istediğinize emin misiniz?',
       [
         { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Çıkış', 
+        {
+          text: 'Çıkış',
           onPress: () => {
             // Complete session if not already completed
             if (sessionId && !sessionComplete) {
               completeSession(sessionId, {
-                totalQuestions: currentIndex + 1,
+                duration: 0,
+                wordsStudied: currentIndex + 1,
                 correctAnswers,
-                wordResults,
+                incorrectAnswers: (currentIndex + 1) - correctAnswers,
+                score: Math.round((correctAnswers / (currentIndex + 1)) * 100)
               });
             }
             router.back();
@@ -168,7 +178,7 @@ export default function LearnScreen() {
       ]
     );
   };
-  
+
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -176,7 +186,7 @@ export default function LearnScreen() {
       </View>
     );
   }
-  
+
   if (sessionComplete) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -184,16 +194,16 @@ export default function LearnScreen() {
           <Text style={[styles.completionTitle, { color: colors.text }]}>
             Tebrikler!
           </Text>
-          
+
           <Text style={[styles.completionSubtitle, { color: colors.textSecondary }]}>
             Öğrenme oturumunu tamamladınız
           </Text>
-          
+
           <View style={[styles.scoreCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.scoreTitle, { color: colors.text }]}>
               Sonuçlarınız
             </Text>
-            
+
             <View style={styles.scoreRow}>
               <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
                 Toplam Soru:
@@ -202,7 +212,7 @@ export default function LearnScreen() {
                 {words.length}
               </Text>
             </View>
-            
+
             <View style={styles.scoreRow}>
               <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
                 Doğru Cevap:
@@ -211,7 +221,7 @@ export default function LearnScreen() {
                 {correctAnswers}
               </Text>
             </View>
-            
+
             <View style={styles.scoreRow}>
               <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
                 Başarı Oranı:
@@ -221,7 +231,7 @@ export default function LearnScreen() {
               </Text>
             </View>
           </View>
-          
+
           <View style={styles.completionButtons}>
             <Button
               title="Listeye Dön"
@@ -229,7 +239,7 @@ export default function LearnScreen() {
               onPress={() => router.replace(`/list/${listId}`)}
               style={styles.completionButton}
             />
-            
+
             <Button
               title="Tekrar Öğren"
               onPress={() => router.replace(`/learn/${listId}`)}
@@ -240,17 +250,17 @@ export default function LearnScreen() {
       </SafeAreaView>
     );
   }
-  
+
   const currentWord = words[currentIndex];
   const progress = (currentIndex + 1) / words.length;
-  
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleExit}>
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        
+
         <View style={styles.progressContainer}>
           <Text style={[styles.progressText, { color: colors.textSecondary }]}>
             {currentIndex + 1} / {words.length}
@@ -258,25 +268,25 @@ export default function LearnScreen() {
           <ProgressBar progress={progress} height={4} />
         </View>
       </View>
-      
+
       <View style={styles.content}>
         <View style={[styles.wordCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.wordLabel, { color: colors.textSecondary }]}>
             {list?.targetLanguage} Kelime:
           </Text>
-          
+
           <View style={styles.wordContainer}>
             <Text style={[styles.word, { color: colors.text }]}>
               {currentWord.term}
             </Text>
-            
+
             {currentWord.pronunciation && (
               <TouchableOpacity style={styles.pronunciationButton}>
                 <Volume2 size={20} color={colors.primary} />
               </TouchableOpacity>
             )}
           </View>
-          
+
           {showAnswer && currentWord.example && (
             <View style={[styles.exampleContainer, { backgroundColor: colors.primary + '10' }]}>
               <Text style={[styles.exampleLabel, { color: colors.primary }]}>
@@ -288,18 +298,18 @@ export default function LearnScreen() {
             </View>
           )}
         </View>
-        
+
         <Text style={[styles.questionText, { color: colors.text }]}>
           Bu kelimenin anlamı nedir?
         </Text>
-        
+
         <View style={styles.optionsContainer}>
           {options.map((option, index) => (
             <TouchableOpacity
               key={index}
               style={[
                 styles.optionButton,
-                { 
+                {
                   backgroundColor: colors.card,
                   borderColor: getOptionBorderColor(index, selectedOption, isCorrect, options, currentWord.definition, colors),
                 },
@@ -308,22 +318,22 @@ export default function LearnScreen() {
               onPress={() => handleOptionSelect(index)}
               disabled={showAnswer}
             >
-              <Text 
+              <Text
                 style={[
-                  styles.optionText, 
+                  styles.optionText,
                   { color: colors.text }
                 ]}
                 numberOfLines={2}
               >
                 {option}
               </Text>
-              
+
               {showAnswer && option === currentWord.definition && (
                 <View style={[styles.correctBadge, { backgroundColor: colors.success }]}>
                   <Check size={16} color="#FFFFFF" />
                 </View>
               )}
-              
+
               {showAnswer && selectedOption === index && option !== currentWord.definition && (
                 <View style={[styles.incorrectBadge, { backgroundColor: colors.error }]}>
                   <X size={16} color="#FFFFFF" />
@@ -333,7 +343,7 @@ export default function LearnScreen() {
           ))}
         </View>
       </View>
-      
+
       <View style={styles.footer}>
         {showAnswer && (
           <Button
@@ -350,26 +360,26 @@ export default function LearnScreen() {
 
 // Helper function to determine option border color
 const getOptionBorderColor = (
-  index: number, 
-  selectedOption: number | null, 
+  index: number,
+  selectedOption: number | null,
   isCorrect: boolean | null,
   options: string[],
   correctDefinition: string,
   colors: any
 ) => {
   if (!selectedOption) return colors.border;
-  
+
   const isSelectedOption = index === selectedOption;
   const isCorrectOption = options[index] === correctDefinition;
-  
+
   if (isSelectedOption) {
     return isCorrect ? colors.success : colors.error;
   }
-  
+
   if (isCorrectOption && !isCorrect) {
     return colors.success;
   }
-  
+
   return colors.border;
 };
 

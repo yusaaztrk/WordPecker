@@ -5,8 +5,7 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/components/ThemeProvider';
 import Input from '@/components/Input';
 import { Search as SearchIcon, X, BookOpen, FileText } from 'lucide-react-native';
-import { searchWords } from '@/firebase/words';
-import { searchPublicWordLists } from '@/firebase/wordLists';
+import { searchWords, searchPublicWordLists } from '@/firebase/wordLists';
 import { useAuthStore } from '@/store/authStore';
 
 type SearchResult = {
@@ -29,15 +28,15 @@ export default function SearchScreen() {
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || !user) return;
-    
+
     setIsLoading(true);
     try {
       const combinedResults: SearchResult[] = [];
-      
+
       // Search words if needed
       if (searchType === 'all' || searchType === 'words') {
         const wordResults = await searchWords(user.uid, searchQuery);
-        
+
         wordResults.forEach(word => {
           combinedResults.push({
             type: 'word',
@@ -49,11 +48,11 @@ export default function SearchScreen() {
           });
         });
       }
-      
+
       // Search lists if needed
       if (searchType === 'all' || searchType === 'lists') {
         const listResults = await searchPublicWordLists(searchQuery);
-        
+
         listResults.forEach(list => {
           combinedResults.push({
             type: 'list',
@@ -63,7 +62,7 @@ export default function SearchScreen() {
           });
         });
       }
-      
+
       setResults(combinedResults);
     } catch (error) {
       console.error('Search error:', error);
@@ -128,7 +127,7 @@ export default function SearchScreen() {
             Tümü
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[
             styles.filterButton,
@@ -145,7 +144,7 @@ export default function SearchScreen() {
             Kelimeler
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[
             styles.filterButton,

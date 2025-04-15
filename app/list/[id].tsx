@@ -4,17 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/components/ThemeProvider';
 import { useWordListStore } from '@/store/wordListStore';
-import { getWords, deleteWord } from '@/firebase/words';
+import { getWordsInList, deleteWord } from '@/firebase/wordLists';
 import WordCard from '@/components/WordCard';
 import EmptyState from '@/components/EmptyState';
 import Button from '@/components/Button';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  BookOpen, 
-  Brain, 
-  PenTool, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  BookOpen,
+  Brain,
+  PenTool,
   Languages,
   Clock,
   MoreVertical
@@ -24,22 +24,22 @@ export default function ListDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { colors } = useTheme();
-  const { fetchList, deleteList, isLoading: listLoading } = useWordListStore();
-  
+  const { fetchListById, deleteList, isLoading: listLoading } = useWordListStore();
+
   const [list, setList] = useState<any>(null);
   const [words, setWords] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   useEffect(() => {
     if (!id) return;
-    
+
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const listData = await fetchList(id);
+        const listData = await fetchListById(id);
         setList(listData);
-        
-        const wordsData = await getWords(id);
+
+        const wordsData = await getWordsInList(id);
         setWords(wordsData);
       } catch (error) {
         console.error('Error loading list details:', error);
@@ -48,18 +48,18 @@ export default function ListDetailScreen() {
         setIsLoading(false);
       }
     };
-    
+
     loadData();
   }, [id]);
-  
+
   const handleDeleteList = () => {
     Alert.alert(
       'Listeyi Sil',
       'Bu listeyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
       [
         { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Sil', 
+        {
+          text: 'Sil',
           onPress: async () => {
             try {
               await deleteList(id);
@@ -74,15 +74,15 @@ export default function ListDetailScreen() {
       ]
     );
   };
-  
+
   const handleDeleteWord = async (wordId: string) => {
     Alert.alert(
       'Kelimeyi Sil',
       'Bu kelimeyi silmek istediğinize emin misiniz?',
       [
         { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Sil', 
+        {
+          text: 'Sil',
           onPress: async () => {
             try {
               await deleteWord(wordId, id);
@@ -98,25 +98,25 @@ export default function ListDetailScreen() {
       ]
     );
   };
-  
+
   const handleStartLearning = () => {
     if (words.length === 0) {
       Alert.alert('Uyarı', 'Öğrenmeye başlamak için listeye kelime eklemelisiniz');
       return;
     }
-    
+
     router.push(`/learn/${id}`);
   };
-  
+
   const handleStartTest = () => {
     if (words.length === 0) {
       Alert.alert('Uyarı', 'Test başlatmak için listeye kelime eklemelisiniz');
       return;
     }
-    
+
     router.push(`/test/${id}`);
   };
-  
+
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -124,7 +124,7 @@ export default function ListDetailScreen() {
       </View>
     );
   }
-  
+
   if (!list) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -134,11 +134,11 @@ export default function ListDetailScreen() {
       </View>
     );
   }
-  
+
   // Format date
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'Tarih yok';
-    
+
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleDateString('tr-TR', {
       year: 'numeric',
@@ -146,7 +146,7 @@ export default function ListDetailScreen() {
       day: 'numeric',
     });
   };
-  
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <View style={styles.header}>
@@ -157,7 +157,7 @@ export default function ListDetailScreen() {
               {list.language} → {list.targetLanguage}
             </Text>
           </View>
-          
+
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <BookOpen size={16} color={colors.primary} />
@@ -165,7 +165,7 @@ export default function ListDetailScreen() {
                 {list.wordCount || 0} kelime
               </Text>
             </View>
-            
+
             <View style={styles.statItem}>
               <Clock size={16} color={colors.primary} />
               <Text style={[styles.statText, { color: colors.textSecondary }]}>
@@ -174,16 +174,16 @@ export default function ListDetailScreen() {
             </View>
           </View>
         </View>
-        
+
         <View style={styles.actions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.primary + '20' }]}
             onPress={() => router.push(`/list/edit/${id}`)}
           >
             <Edit size={20} color={colors.primary} />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.error + '20' }]}
             onPress={handleDeleteList}
           >
@@ -191,13 +191,13 @@ export default function ListDetailScreen() {
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <View style={styles.description}>
         <Text style={[styles.descriptionText, { color: colors.text }]}>
           {list.description}
         </Text>
       </View>
-      
+
       <View style={styles.buttonContainer}>
         <Button
           title="Öğren"
@@ -205,7 +205,7 @@ export default function ListDetailScreen() {
           onPress={handleStartLearning}
           style={styles.button}
         />
-        
+
         <Button
           title="Test Et"
           variant="secondary"
@@ -214,12 +214,12 @@ export default function ListDetailScreen() {
           style={styles.button}
         />
       </View>
-      
+
       <View style={styles.wordsHeader}>
         <Text style={[styles.wordsTitle, { color: colors.text }]}>
           Kelimeler
         </Text>
-        
+
         <Button
           title="Kelime Ekle"
           size="small"
@@ -227,7 +227,7 @@ export default function ListDetailScreen() {
           onPress={() => router.push(`/word/add/${id}`)}
         />
       </View>
-      
+
       {words.length === 0 ? (
         <EmptyState
           title="Henüz kelime eklenmemiş"

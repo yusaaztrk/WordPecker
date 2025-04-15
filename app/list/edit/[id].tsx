@@ -12,8 +12,8 @@ export default function EditListScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { colors } = useTheme();
-  const { fetchList, updateList, isLoading } = useWordListStore();
-  
+  const { fetchListById, updateList, isLoading } = useWordListStore();
+
   const [list, setList] = useState<any>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -21,23 +21,23 @@ export default function EditListScreen() {
   const [targetLanguage, setTargetLanguage] = useState('');
   const [source, setSource] = useState('');
   const [isPublic, setIsPublic] = useState(false);
-  
+
   const [errors, setErrors] = useState({
     name: '',
     description: '',
   });
-  
+
   const [isLoadingList, setIsLoadingList] = useState(true);
-  
+
   useEffect(() => {
     if (!id) return;
-    
+
     const loadList = async () => {
       setIsLoadingList(true);
       try {
-        const listData = await fetchList(id);
+        const listData = await fetchListById(id);
         setList(listData);
-        
+
         // Set form values
         setName(listData.name || '');
         setDescription(listData.description || '');
@@ -52,36 +52,36 @@ export default function EditListScreen() {
         setIsLoadingList(false);
       }
     };
-    
+
     loadList();
   }, [id]);
-  
+
   const validateForm = () => {
     let isValid = true;
     const newErrors = {
       name: '',
       description: '',
     };
-    
+
     if (!name.trim()) {
       newErrors.name = 'Liste adı gereklidir';
       isValid = false;
     }
-    
+
     if (!description.trim()) {
       newErrors.description = 'Açıklama gereklidir';
       isValid = false;
     }
-    
+
     setErrors(newErrors);
     return isValid;
   };
-  
+
   const handleUpdateList = async () => {
     if (!validateForm()) {
       return;
     }
-    
+
     try {
       await updateList(id, {
         name,
@@ -91,7 +91,7 @@ export default function EditListScreen() {
         source: source || undefined,
         isPublic,
       });
-      
+
       Alert.alert(
         'Liste Güncellendi',
         'Liste başarıyla güncellendi',
@@ -107,7 +107,7 @@ export default function EditListScreen() {
       Alert.alert('Hata', 'Liste güncellenirken bir hata oluştu');
     }
   };
-  
+
   if (isLoadingList) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -115,14 +115,14 @@ export default function EditListScreen() {
       </View>
     );
   }
-  
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoid}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -133,7 +133,7 @@ export default function EditListScreen() {
               Listeyi Düzenle
             </Text>
           </View>
-          
+
           <View style={styles.form}>
             <Input
               label="Liste Adı"
@@ -142,7 +142,7 @@ export default function EditListScreen() {
               placeholder="Örn: İngilizce Günlük Konuşma"
               error={errors.name}
             />
-            
+
             <Input
               label="Açıklama"
               value={description}
@@ -154,7 +154,7 @@ export default function EditListScreen() {
               style={styles.textArea}
               error={errors.description}
             />
-            
+
             <View style={styles.languageContainer}>
               <View style={styles.languageField}>
                 <Text style={[styles.label, { color: colors.text }]}>
@@ -170,7 +170,7 @@ export default function EditListScreen() {
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.languageField}>
                 <Text style={[styles.label, { color: colors.text }]}>
                   Hedef Dil
@@ -186,7 +186,7 @@ export default function EditListScreen() {
                 </View>
               </View>
             </View>
-            
+
             <Input
               label="Kaynak (İsteğe Bağlı)"
               value={source}
@@ -194,7 +194,7 @@ export default function EditListScreen() {
               placeholder="Örn: Kitap, Kurs, Web sitesi"
               leftIcon={<Info size={20} color={colors.primary} />}
             />
-            
+
             <View style={styles.buttonContainer}>
               <Button
                 title="İptal"

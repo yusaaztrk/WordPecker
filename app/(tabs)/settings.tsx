@@ -25,18 +25,21 @@ import {
 export default function SettingsScreen() {
   const router = useRouter();
   const { colors, theme, toggleTheme } = useTheme();
-  const { 
-    notifications, 
-    dailyGoal, 
-    learningMode, 
-    soundEffects, 
-    hapticFeedback, 
+  const {
+    notifications,
+    dailyGoal,
+    learningMode,
+    soundEffects,
+    hapticFeedback,
     autoPlayPronunciation,
     defaultLanguage,
     updateNotifications,
+    updateDailyGoal,
+    updateLearningMode,
     updateSoundEffects,
     updateHapticFeedback,
     updateAutoPlayPronunciation,
+    updateDefaultLanguage,
     resetSettings,
   } = useSettingsStore();
   const { logout } = useAuthStore();
@@ -74,19 +77,19 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.title, { color: colors.text }]}>Ayarlar</Text>
-        
+
         {/* Appearance */}
         <Card style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Görünüm
           </Text>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingLabelContainer}>
               {theme === 'dark' ? (
@@ -106,13 +109,13 @@ export default function SettingsScreen() {
             />
           </View>
         </Card>
-        
+
         {/* Notifications */}
         <Card style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Bildirimler
           </Text>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingLabelContainer}>
               <Bell size={20} color={colors.primary} />
@@ -127,8 +130,23 @@ export default function SettingsScreen() {
               thumbColor={notifications ? colors.primary : '#f4f3f4'}
             />
           </View>
-          
-          <TouchableOpacity style={styles.settingItem}>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              Alert.alert(
+                'Günlük Hedef',
+                'Günlük öğrenmek istediğiniz kelime sayısını seçin',
+                [
+                  { text: 'İptal', style: 'cancel' },
+                  { text: '5 kelime', onPress: () => updateDailyGoal(5) },
+                  { text: '10 kelime', onPress: () => updateDailyGoal(10) },
+                  { text: '15 kelime', onPress: () => updateDailyGoal(15) },
+                  { text: '20 kelime', onPress: () => updateDailyGoal(20) },
+                ]
+              );
+            }}
+          >
             <View style={styles.settingLabelContainer}>
               <Target size={20} color={colors.primary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>
@@ -143,14 +161,28 @@ export default function SettingsScreen() {
             </View>
           </TouchableOpacity>
         </Card>
-        
+
         {/* Learning */}
         <Card style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Öğrenme
           </Text>
-          
-          <TouchableOpacity style={styles.settingItem}>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              Alert.alert(
+                'Öğrenme Modu',
+                'Tercih ettiğiniz öğrenme modunu seçin',
+                [
+                  { text: 'İptal', style: 'cancel' },
+                  { text: 'Standart', onPress: () => updateLearningMode('standard') },
+                  { text: 'Aralıklı Tekrar', onPress: () => updateLearningMode('spaced') },
+                  { text: 'Yoğun', onPress: () => updateLearningMode('intensive') },
+                ]
+              );
+            }}
+          >
             <View style={styles.settingLabelContainer}>
               <Brain size={20} color={colors.primary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>
@@ -159,14 +191,27 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.settingValueContainer}>
               <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
-                {learningMode === 'standard' ? 'Standart' : 
+                {learningMode === 'standard' ? 'Standart' :
                  learningMode === 'spaced' ? 'Aralıklı Tekrar' : 'Yoğun'}
               </Text>
               <ChevronRight size={20} color={colors.textSecondary} />
             </View>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.settingItem}>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              Alert.alert(
+                'Varsayılan Dil',
+                'Ana dilinizi seçin',
+                [
+                  { text: 'İptal', style: 'cancel' },
+                  { text: 'Türkçe', onPress: () => updateDefaultLanguage('Türkçe') },
+                  { text: 'İngilizce', onPress: () => updateDefaultLanguage('İngilizce') },
+                ]
+              );
+            }}
+          >
             <View style={styles.settingLabelContainer}>
               <Languages size={20} color={colors.primary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>
@@ -180,7 +225,7 @@ export default function SettingsScreen() {
               <ChevronRight size={20} color={colors.textSecondary} />
             </View>
           </TouchableOpacity>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingLabelContainer}>
               <Volume2 size={20} color={colors.primary} />
@@ -195,7 +240,7 @@ export default function SettingsScreen() {
               thumbColor={soundEffects ? colors.primary : '#f4f3f4'}
             />
           </View>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingLabelContainer}>
               <Vibrate size={20} color={colors.primary} />
@@ -210,7 +255,7 @@ export default function SettingsScreen() {
               thumbColor={hapticFeedback ? colors.primary : '#f4f3f4'}
             />
           </View>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingLabelContainer}>
               <Volume2 size={20} color={colors.primary} />
@@ -226,14 +271,14 @@ export default function SettingsScreen() {
             />
           </View>
         </Card>
-        
+
         {/* About */}
         <Card style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Hakkında
           </Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.settingItem}
             onPress={() => router.push('/modal')}
           >
@@ -245,8 +290,17 @@ export default function SettingsScreen() {
             </View>
             <ChevronRight size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.settingItem}>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              Alert.alert(
+                'Yardım ve Destek',
+                'Yardıma mı ihtiyacınız var?\n\nE-posta: destek@wordpecker.com\nTelefon: +90 212 123 45 67',
+                [{ text: 'Tamam', style: 'default' }]
+              );
+            }}
+          >
             <View style={styles.settingLabelContainer}>
               <HelpCircle size={20} color={colors.primary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>
@@ -256,14 +310,14 @@ export default function SettingsScreen() {
             <ChevronRight size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </Card>
-        
+
         {/* Account */}
         <Card style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Hesap
           </Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.settingItem}
             onPress={confirmResetSettings}
           >
@@ -274,8 +328,8 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.settingItem}
             onPress={confirmLogout}
           >
@@ -287,7 +341,7 @@ export default function SettingsScreen() {
             </View>
           </TouchableOpacity>
         </Card>
-        
+
         <Text style={[styles.versionText, { color: colors.textSecondary }]}>
           Sürüm 1.0.0
         </Text>

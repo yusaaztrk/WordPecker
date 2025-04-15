@@ -123,61 +123,30 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true
             });
           } else {
-            // GELİŞTİRME MODU: Kimlik doğrulama olmadan test için
-            // Gerçek uygulamada bu kısmı kaldırın
-            console.log('GELİŞTİRME MODU: Test kullanıcısı oluşturuluyor');
-            set({
-              user: {
-                uid: 'test-user-id',
-                email: 'test@example.com',
-                displayName: 'Test Kullanıcı',
-                photoURL: '',
-              },
-              isAuthenticated: true
-            });
-            // Normal davranış (geliştirme modunda yorum satırına alın)
-            // set({ user: null, isAuthenticated: false });
+            set({ user: null, isAuthenticated: false });
           }
 
           // Auth durumu değişikliklerini dinle
-          try {
-            onAuthChanged((firebaseUser) => {
-              if (firebaseUser) {
-                set({
-                  user: {
-                    uid: firebaseUser.uid,
-                    email: firebaseUser.email || '',
-                    displayName: firebaseUser.displayName || '',
-                    photoURL: firebaseUser.photoURL || '',
-                  },
-                  isAuthenticated: true,
-                  isLoading: false
-                });
-              } else {
-                // GELİŞTİRME MODU: Kimlik doğrulama olmadan test için
-                // Gerçek uygulamada bu kısmı kaldırın
-                // set({ user: null, isAuthenticated: false, isLoading: false });
-              }
-            });
-          } catch (authError) {
-            console.log('Auth dinleme hatası:', authError);
-            // Hata durumunda geliştirme modunda devam et
-          }
+          onAuthChanged((firebaseUser) => {
+            if (firebaseUser) {
+              set({
+                user: {
+                  uid: firebaseUser.uid,
+                  email: firebaseUser.email || '',
+                  displayName: firebaseUser.displayName || '',
+                  photoURL: firebaseUser.photoURL || '',
+                },
+                isAuthenticated: true,
+                isLoading: false
+              });
+            } else {
+              set({ user: null, isAuthenticated: false, isLoading: false });
+            }
+          });
 
         } catch (error) {
-          console.log('checkAuth hatası:', error);
-          // GELİŞTİRME MODU: Kimlik doğrulama olmadan test için
-          set({
-            user: {
-              uid: 'test-user-id',
-              email: 'test@example.com',
-              displayName: 'Test Kullanıcı',
-              photoURL: '',
-            },
-            isAuthenticated: true
-          });
-          // Normal davranış (geliştirme modunda yorum satırına alın)
-          // set({ user: null, isAuthenticated: false });
+          console.error('Kimlik doğrulama kontrolü sırasında hata:', error);
+          set({ user: null, isAuthenticated: false });
         } finally {
           set({ isLoading: false });
         }

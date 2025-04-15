@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/components/ThemeProvider';
 import { useWordListStore } from '@/store/wordListStore';
-import { createWord } from '@/firebase/words';
+import { addWordToList } from '@/firebase/wordLists';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import { FileText, Volume2, BookOpen, Plus } from 'lucide-react-native';
@@ -13,30 +13,30 @@ export default function AddWordScreen() {
   const { listId } = useLocalSearchParams<{ listId: string }>();
   const router = useRouter();
   const { colors } = useTheme();
-  const { fetchList } = useWordListStore();
-  
+  const { fetchListById } = useWordListStore();
+
   const [list, setList] = useState<any>(null);
   const [term, setTerm] = useState('');
   const [definition, setDefinition] = useState('');
   const [example, setExample] = useState('');
   const [pronunciation, setPronunciation] = useState('');
   const [notes, setNotes] = useState('');
-  
+
   const [errors, setErrors] = useState({
     term: '',
     definition: '',
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(true);
-  
+
   useEffect(() => {
     if (!listId) return;
-    
+
     const loadList = async () => {
       setIsLoadingList(true);
       try {
-        const listData = await fetchList(listId);
+        const listData = await fetchListById(listId);
         setList(listData);
       } catch (error) {
         console.error('Error loading list:', error);
@@ -45,47 +45,47 @@ export default function AddWordScreen() {
         setIsLoadingList(false);
       }
     };
-    
+
     loadList();
   }, [listId]);
-  
+
   const validateForm = () => {
     let isValid = true;
     const newErrors = {
       term: '',
       definition: '',
     };
-    
+
     if (!term.trim()) {
       newErrors.term = 'Kelime gereklidir';
       isValid = false;
     }
-    
+
     if (!definition.trim()) {
       newErrors.definition = 'Tanım gereklidir';
       isValid = false;
     }
-    
+
     setErrors(newErrors);
     return isValid;
   };
-  
+
   const handleAddWord = async () => {
     if (!validateForm()) {
       return;
     }
-    
+
     setIsLoading(true);
     try {
-      await createWord({
-        listId,
+      await addWordToList(listId, {
+
         term,
         definition,
         example: example || undefined,
         pronunciation: pronunciation || undefined,
         notes: notes || undefined,
       });
-      
+
       Alert.alert(
         'Kelime Eklendi',
         'Kelime başarıyla eklendi',
@@ -115,7 +115,7 @@ export default function AddWordScreen() {
       setIsLoading(false);
     }
   };
-  
+
   if (isLoadingList) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -123,14 +123,14 @@ export default function AddWordScreen() {
       </View>
     );
   }
-  
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoid}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -146,7 +146,7 @@ export default function AddWordScreen() {
             </View>
             <BookOpen size={30} color={colors.primary} />
           </View>
-          
+
           <View style={styles.form}>
             <Input
               label="Kelime"
@@ -156,7 +156,7 @@ export default function AddWordScreen() {
               leftIcon={<FileText size={20} color={colors.primary} />}
               error={errors.term}
             />
-            
+
             <Input
               label="Tanım"
               value={definition}
@@ -168,7 +168,7 @@ export default function AddWordScreen() {
               style={styles.definitionInput}
               error={errors.definition}
             />
-            
+
             <Input
               label="Örnek Cümle (İsteğe Bağlı)"
               value={example}
@@ -179,7 +179,7 @@ export default function AddWordScreen() {
               textAlignVertical="top"
               style={styles.exampleInput}
             />
-            
+
             <Input
               label="Telaffuz (İsteğe Bağlı)"
               value={pronunciation}
@@ -187,7 +187,7 @@ export default function AddWordScreen() {
               placeholder="Telaffuz rehberi"
               leftIcon={<Volume2 size={20} color={colors.primary} />}
             />
-            
+
             <Input
               label="Notlar (İsteğe Bağlı)"
               value={notes}
@@ -198,7 +198,7 @@ export default function AddWordScreen() {
               textAlignVertical="top"
               style={styles.notesInput}
             />
-            
+
             <View style={styles.buttonContainer}>
               <Button
                 title="İptal"

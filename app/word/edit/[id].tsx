@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Ale
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/components/ThemeProvider';
-import { getWord, updateWord, deleteWord } from '@/firebase/words';
+import { getWord, updateWord, deleteWord } from '@/firebase/wordLists';
 import { useWordListStore } from '@/store/wordListStore';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
@@ -13,8 +13,8 @@ export default function EditWordScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { colors } = useTheme();
-  const { fetchList } = useWordListStore();
-  
+  const { fetchListById } = useWordListStore();
+
   const [word, setWord] = useState<any>(null);
   const [list, setList] = useState<any>(null);
   const [term, setTerm] = useState('');
@@ -22,33 +22,33 @@ export default function EditWordScreen() {
   const [example, setExample] = useState('');
   const [pronunciation, setPronunciation] = useState('');
   const [notes, setNotes] = useState('');
-  
+
   const [errors, setErrors] = useState({
     term: '',
     definition: '',
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
-  
+
   useEffect(() => {
     if (!id) return;
-    
+
     const loadData = async () => {
       setIsLoadingData(true);
       try {
         const wordData = await getWord(id);
         setWord(wordData);
-        
+
         // Set form values
         setTerm(wordData.term || '');
         setDefinition(wordData.definition || '');
         setExample(wordData.example || '');
         setPronunciation(wordData.pronunciation || '');
         setNotes(wordData.notes || '');
-        
+
         // Load list data
-        const listData = await fetchList(wordData.listId);
+        const listData = await fetchListById(wordData.listId || '');
         setList(listData);
       } catch (error) {
         console.error('Error loading word data:', error);
@@ -57,36 +57,36 @@ export default function EditWordScreen() {
         setIsLoadingData(false);
       }
     };
-    
+
     loadData();
   }, [id]);
-  
+
   const validateForm = () => {
     let isValid = true;
     const newErrors = {
       term: '',
       definition: '',
     };
-    
+
     if (!term.trim()) {
       newErrors.term = 'Kelime gereklidir';
       isValid = false;
     }
-    
+
     if (!definition.trim()) {
       newErrors.definition = 'Tanım gereklidir';
       isValid = false;
     }
-    
+
     setErrors(newErrors);
     return isValid;
   };
-  
+
   const handleUpdateWord = async () => {
     if (!validateForm()) {
       return;
     }
-    
+
     setIsLoading(true);
     try {
       await updateWord(id, {
@@ -96,7 +96,7 @@ export default function EditWordScreen() {
         pronunciation: pronunciation || undefined,
         notes: notes || undefined,
       });
-      
+
       Alert.alert(
         'Kelime Güncellendi',
         'Kelime başarıyla güncellendi',
@@ -114,15 +114,15 @@ export default function EditWordScreen() {
       setIsLoading(false);
     }
   };
-  
+
   const handleDeleteWord = async () => {
     Alert.alert(
       'Kelimeyi Sil',
       'Bu kelimeyi silmek istediğinize emin misiniz?',
       [
         { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Sil', 
+        {
+          text: 'Sil',
           onPress: async () => {
             setIsLoading(true);
             try {
@@ -139,7 +139,7 @@ export default function EditWordScreen() {
       ]
     );
   };
-  
+
   if (isLoadingData) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -147,14 +147,14 @@ export default function EditWordScreen() {
       </View>
     );
   }
-  
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoid}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -170,7 +170,7 @@ export default function EditWordScreen() {
             </View>
             <BookOpen size={30} color={colors.primary} />
           </View>
-          
+
           <View style={styles.form}>
             <Input
               label="Kelime"
@@ -180,7 +180,7 @@ export default function EditWordScreen() {
               leftIcon={<FileText size={20} color={colors.primary} />}
               error={errors.term}
             />
-            
+
             <Input
               label="Tanım"
               value={definition}
@@ -192,7 +192,7 @@ export default function EditWordScreen() {
               style={styles.definitionInput}
               error={errors.definition}
             />
-            
+
             <Input
               label="Örnek Cümle (İsteğe Bağlı)"
               value={example}
@@ -203,7 +203,7 @@ export default function EditWordScreen() {
               textAlignVertical="top"
               style={styles.exampleInput}
             />
-            
+
             <Input
               label="Telaffuz (İsteğe Bağlı)"
               value={pronunciation}
@@ -211,7 +211,7 @@ export default function EditWordScreen() {
               placeholder="Telaffuz rehberi"
               leftIcon={<Volume2 size={20} color={colors.primary} />}
             />
-            
+
             <Input
               label="Notlar (İsteğe Bağlı)"
               value={notes}
@@ -222,7 +222,7 @@ export default function EditWordScreen() {
               textAlignVertical="top"
               style={styles.notesInput}
             />
-            
+
             <View style={styles.buttonContainer}>
               <Button
                 title="Sil"

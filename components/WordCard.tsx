@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '@/components/ThemeProvider';
 import { Edit, Trash2, Volume2, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { Word } from '@/firebase/words';
+import { Word } from '@/firebase/wordLists';
 
 interface WordCardProps {
   word: Word;
@@ -33,14 +33,14 @@ const WordCard: React.FC<WordCardProps> = ({
     <View
       style={[
         styles.container,
-        { 
+        {
           backgroundColor: colors.card,
           borderColor: colors.border,
         }
       ]}
     >
-      <TouchableOpacity 
-        style={styles.header} 
+      <TouchableOpacity
+        style={styles.header}
         onPress={toggleExpand}
         activeOpacity={0.7}
       >
@@ -49,7 +49,7 @@ const WordCard: React.FC<WordCardProps> = ({
             {word.term}
           </Text>
           {word.pronunciation && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pronunciationButton}
               onPress={handlePlayPronunciation}
             >
@@ -57,21 +57,21 @@ const WordCard: React.FC<WordCardProps> = ({
             </TouchableOpacity>
           )}
         </View>
-        
+
         <View style={styles.rightContainer}>
           {showActions && (
             <View style={styles.actions}>
               {onEdit && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionButton, { backgroundColor: colors.primary + '20' }]}
                   onPress={onEdit}
                 >
                   <Edit size={16} color={colors.primary} />
                 </TouchableOpacity>
               )}
-              
+
               {onDelete && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionButton, { backgroundColor: colors.error + '20' }]}
                   onPress={onDelete}
                 >
@@ -80,7 +80,7 @@ const WordCard: React.FC<WordCardProps> = ({
               )}
             </View>
           )}
-          
+
           {expanded ? (
             <ChevronUp size={20} color={colors.textSecondary} />
           ) : (
@@ -88,13 +88,13 @@ const WordCard: React.FC<WordCardProps> = ({
           )}
         </View>
       </TouchableOpacity>
-      
+
       <View style={styles.definitionContainer}>
         <Text style={[styles.definition, { color: colors.text }]}>
           {word.definition}
         </Text>
       </View>
-      
+
       {expanded && word.example && (
         <View style={[styles.exampleContainer, { backgroundColor: colors.primary + '10' }]}>
           <Text style={[styles.exampleLabel, { color: colors.primary }]}>
@@ -105,7 +105,7 @@ const WordCard: React.FC<WordCardProps> = ({
           </Text>
         </View>
       )}
-      
+
       {expanded && word.notes && (
         <View style={styles.notesContainer}>
           <Text style={[styles.notesLabel, { color: colors.textSecondary }]}>
@@ -116,21 +116,21 @@ const WordCard: React.FC<WordCardProps> = ({
           </Text>
         </View>
       )}
-      
+
       {expanded && word.mastery !== undefined && (
         <View style={styles.masteryContainer}>
           <Text style={[styles.masteryLabel, { color: colors.textSecondary }]}>
             Hakimiyet:
           </Text>
           <View style={styles.masteryBarContainer}>
-            <View 
+            <View
               style={[
-                styles.masteryBar, 
-                { 
+                styles.masteryBar,
+                {
                   width: `${word.mastery}%`,
                   backgroundColor: getMasteryColor(word.mastery, colors),
                 }
-              ]} 
+              ]}
             />
           </View>
           <Text style={[styles.masteryValue, { color: colors.textSecondary }]}>

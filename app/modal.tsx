@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/components/ThemeProvider';
@@ -23,17 +23,17 @@ export default function ModalScreen() {
           source={{ uri: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=200&auto=format&fit=crop' }}
           style={styles.logo}
         />
-        
-        <Text style={[styles.appName, { color: colors.primary }]}>KelimeKutusu</Text>
-        
+
+        <Text style={[styles.appName, { color: colors.primary }]}>WordPecker</Text>
+
         <Text style={[styles.version, { color: colors.textSecondary }]}>
           Sürüm 1.0.0
         </Text>
-        
+
         <Text style={[styles.description, { color: colors.text }]}>
-          KelimeKutusu, yabancı dil öğrenimini kolaylaştırmak ve eğlenceli hale getirmek için tasarlanmış bir kelime öğrenme uygulamasıdır.
+          WordPecker, yabancı dil öğrenimini kolaylaştırmak ve eğlenceli hale getirmek için tasarlanmış bir kelime öğrenme uygulamasıdır.
         </Text>
-        
+
         <View style={[styles.section, { borderTopColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Özellikler
@@ -71,7 +71,7 @@ export default function ModalScreen() {
             </View>
           </View>
         </View>
-        
+
         <View style={[styles.section, { borderTopColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             İletişim
@@ -80,10 +80,10 @@ export default function ModalScreen() {
             Sorularınız, önerileriniz veya geri bildirimleriniz için:
           </Text>
           <Text style={[styles.email, { color: colors.primary }]}>
-            destek@kelimekutusu.com
+            destek@wordpecker.com
           </Text>
         </View>
-        
+
         <View style={[styles.section, { borderTopColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Gizlilik Politikası
@@ -91,15 +91,24 @@ export default function ModalScreen() {
           <Text style={[styles.privacyText, { color: colors.text }]}>
             Gizliliğiniz bizim için önemlidir. Verileriniz güvenle saklanır ve üçüncü taraflarla paylaşılmaz.
           </Text>
-          <TouchableOpacity style={[styles.linkButton, { borderColor: colors.primary }]}>
+          <TouchableOpacity
+            style={[styles.linkButton, { borderColor: colors.primary }]}
+            onPress={() => {
+              Alert.alert(
+                'Gizlilik Politikası',
+                'WordPecker uygulamasının gizlilik politikası hakkında bilgi almak için web sitemizi ziyaret edebilirsiniz.',
+                [{ text: 'Tamam', style: 'default' }]
+              );
+            }}
+          >
             <Text style={[styles.linkButtonText, { color: colors.primary }]}>
               Gizlilik Politikasını Görüntüle
             </Text>
           </TouchableOpacity>
         </View>
-        
+
         <Text style={[styles.copyright, { color: colors.textSecondary }]}>
-          © 2023 KelimeKutusu. Tüm hakları saklıdır.
+          © 2023 WordPecker. Tüm hakları saklıdır.
         </Text>
       </ScrollView>
     </SafeAreaView>
