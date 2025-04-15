@@ -1,99 +1,93 @@
-import { 
-    collection, 
-    doc, 
-    addDoc, 
-    getDoc, 
-    getDocs, 
-    updateDoc, 
-    query, 
-    where, 
-    orderBy
-  } from 'firebase/firestore';
-  import { db } from './config';
-  import { LearningSession } from '@/store/learningStore';
-  
-  // Collection references
-  const sessionsCollection = collection(db, 'learningSessions');
-  
-  // Create a new learning session
-  export const createSession = async (sessionData: Omit<LearningSession, 'id'>): Promise<string> => {
-    try {
-      const docRef = await addDoc(sessionsCollection, sessionData);
-      return docRef.id;
-    } catch (error) {
-      console.error('Error creating session:', error);
-      throw error;
-    }
-  };
-  
-  // Get all sessions for a user
-  export const getSessions = async (userId: string): Promise<LearningSession[]> => {
-    try {
-      const q = query(
-        sessionsCollection, 
-        where('userId', '==', userId),
-        orderBy('date', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      } as LearningSession));
-    } catch (error) {
-      console.error('Error getting sessions:', error);
-      throw error;
-    }
-  };
-  
-  // Get sessions for a specific list
-  export const getSessionsByList = async (userId: string, listId: string): Promise<LearningSession[]> => {
-    try {
-      const q = query(
-        sessionsCollection, 
-        where('userId', '==', userId),
-        where('listId', '==', listId),
-        orderBy('date', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      } as LearningSession));
-    } catch (error) {
-      console.error('Error getting sessions by list:', error);
-      throw error;
-    }
-  };
-  
-  // Update a session
-  export const updateSession = async (sessionId: string, updates: Partial<Omit<LearningSession, 'id' | 'userId' | 'listId' | 'date'>>): Promise<void> => {
-    try {
-      const docRef = doc(sessionsCollection, sessionId);
-      await updateDoc(docRef, updates);
-    } catch (error) {
-      console.error('Error updating session:', error);
-      throw error;
-    }
-  };
-  
-  // Get a specific session by ID
-  export const getSessionById = async (sessionId: string): Promise<LearningSession> => {
-    try {
-      const docRef = doc(sessionsCollection, sessionId);
-      const docSnap = await getDoc(docRef);
-      
-      if (!docSnap.exists()) {
-        throw new Error('Session not found');
-      }
-      
-      return {
-        id: docSnap.id,
-        ...docSnap.data(),
-      } as LearningSession;
-    } catch (error) {
-      console.error('Error getting session:', error);
-      throw error;
-    }
-  };
+// learningSessions.js
+import { supabase } from './config';
+
+// Yeni öğrenme oturumu oluştur
+export const createSession = async (sessionData) => {
+  try {
+    const { data, error } = await supabase
+      .from('learning_sessions')
+      .insert([{
+        user_id: sessionData.userId,
+        list_id: sessionData.listId,
+        date: new Date(),
+        duration: sessionData.duration,
+        words_reviewed: sessionData.wordsReviewed,
+        words_learned: sessionData.wordsLearned,
+        score: sessionData.score
+      }])
+      .select();
+    
+    if (error) throw error;
+    return data[0].id;
+  } catch (error) {
+    console.error('Oturum oluşturulurken hata:', error.message);
+    throw error;
+  }
+};
+
+// Kullanıcının tüm oturumlarını getir
+export const getSessions = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('learning_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Oturumlar alınırken hata:', error.message);
+    throw error;
+  }
+};
+
+// Belirli bir liste için oturumları getir
+export const getSessionsByList = async (userId, listId) => {
+  try {
+    const { data, error } = await supabase
+      .from('learning_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('list_id', listId)
+      .order('date', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Liste oturumları alınırken hata:', error.message);
+    throw error;
+  }
+};
+
+// Oturum güncelle
+export const updateSession = async (sessionId, updates) => {
+  try {
+    const { error } = await supabase
+      .from('learning_sessions')
+      .update(updates)
+      .eq('id', sessionId);
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Oturum güncellenirken hata:', error.message);
+    throw error;
+  }
+};
+
+// ID'ye göre oturum getir
+export const getSessionById = async (sessionId) => {
+  try {
+    const { data, error } = await supabase
+      .from('learning_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Oturum alınırken hata:', error.message);
+    throw error;
+  }
+};

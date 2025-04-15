@@ -1,21 +1,16 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { getAuth } from 'firebase/auth'; // Bu satırı import kısmına ekleyin
+// config.js
+import { createClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBYkQamwman8q7ukmKXN6wXToK5NoeskEk",
-  authDomain: "worldwecker.firebaseapp.com",
-  projectId: "worldwecker",
-  storageBucket: "worldwecker.appspot.com", 
-  messagingSenderId: "395218703678",
-  appId: "1:395218703678:web:038568716025b1f107486f",
-  measurementId: "G-N8BN90QY0Q"
-};
+const supabaseUrl = 'https://your-supabase-url.supabase.co';
+const supabaseAnonKey = 'your-anon-key';
 
-// Initialize Firebase
-export const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-export const auth = getAuth(app); // Bu satırı diğer export'ların yanına ekleyin
+// AsyncStorage adapter ile Supabase istemcisini oluştur
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
