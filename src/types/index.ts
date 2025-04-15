@@ -1,24 +1,40 @@
 // Navigation Types
 export type RootStackParamList = {
+  // Mevcut ekranlar
   Home: undefined;
-  FeaturePlaceholder: { 
-    featureId: number; 
-    featureName: string; 
-    description: string 
-  };
-  // These would be implemented by the team
+  FeaturePlaceholder: { featureId: number; featureName: string; description: string };
+  
+  // Auth ekranları
   Login: undefined;
   Register: undefined;
-  Lists: undefined;
+  ForgotPassword: undefined;
+  
+  // Ana ekranlar
+  WordLists: undefined; // Lists yerine
   CreateList: undefined;
-  ListDetail: { listId: string };
+  ListDetail: { listId: string; name?: string; edit?: boolean };
   AddWord: { listId: string };
-  Learn: { listId: string };
+  Learning: { listId: string }; // Learn yerine
   Quiz: { listId: string };
   Progress: undefined;
   Search: undefined;
   Settings: undefined;
-  // Innovative features would be added here
+  Profile: undefined;
+  
+  // Yenilikçi özellikler
+  ScanWords: undefined;
+  MicroLearning: undefined;
+  
+  // Tab navigatörler
+  HomeTab: undefined;
+  ListsTab: undefined;
+  SearchTab: undefined;
+  ProgressTab: undefined;
+  InnovativeTab: undefined;
+  SettingsTab: undefined;
+  
+  // Splash Screen
+  Splash: undefined;
 };
 
 // Data Types
