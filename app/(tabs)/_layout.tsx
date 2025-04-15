@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { Tabs } from "expo-router";
 import { useRouter, useRootNavigationState } from "expo-router";
-import { Home, BookOpen, BarChart, Settings, Search } from "lucide-react-native";
+import { Home, BookOpen, BarChart, Settings, Search, GraduationCap } from "lucide-react-native";
 import { useAuthStore } from "@/store/authStore";
 import { useTheme } from "@/components/ThemeProvider";
 import { useWordListStore } from "@/store/wordListStore";
@@ -72,6 +72,13 @@ export default function TabLayout() {
         options={{
           title: "Arama",
           tabBarIcon: ({ color }) => <Search size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="english"
+        options={{
+          title: "İngilizce",
+          tabBarIcon: ({ color }) => <GraduationCap size={24} color={color} />,
         }}
       />
       <Tabs.Screen

@@ -11,24 +11,14 @@ import {
   getWordsInList,
   deleteWord,
   updateWord,
-  Word as FirebaseWord
-} from '@/firebase/wordLists';
+  Word as SupabaseWord,
+  WordList as SupabaseWordList
+} from '@/supabase/wordLists';
 import { useAuthStore } from './authStore';
+import { convertToUUID } from '@/supabase/auth';
 
-export type Word = FirebaseWord;
-
-export interface WordList {
-  id: string;
-  name: string;
-  description?: string;
-  language: string;
-  targetLanguage: string;
-  tags?: string[];
-  wordCount: number;
-  createdAt: number;
-  updatedAt: number;
-  userId: string;
-}
+export type Word = SupabaseWord;
+export type WordList = SupabaseWordList;
 
 interface WordListState {
   lists: WordList[];
@@ -74,7 +64,8 @@ export const useWordListStore = create<WordListState>()(
 
         set({ isLoading: true, error: null });
         try {
-          const lists = await getLists(user.uid);
+          const uuid = convertToUUID(user.uid);
+          const lists = await getLists(uuid);
           set({ lists, isLoading: false });
         } catch (error) {
           console.error('Listeler alınırken hata:', error);
@@ -110,8 +101,8 @@ export const useWordListStore = create<WordListState>()(
         try {
           const listId = await createList({
             ...listData,
-            userId: user.uid,
-            wordCount: 0,
+            user_id: convertToUUID(user.uid),
+            word_count: 0,
           });
 
           // Refresh lists after creating a new one
@@ -135,14 +126,14 @@ export const useWordListStore = create<WordListState>()(
 
           // Update local state
           const updatedLists = get().lists.map(list =>
-            list.id === id ? { ...list, ...updates, updatedAt: Date.now() } : list
+            list.id === id ? { ...list, ...updates, updated_at: new Date().toISOString() } : list
           );
 
           const currentList = get().currentList;
           set({
             lists: updatedLists,
             currentList: currentList?.id === id
-              ? { ...currentList, ...updates, updatedAt: Date.now() }
+              ? { ...currentList, ...updates, updated_at: new Date().toISOString() }
               : currentList,
             isLoading: false
           });
@@ -201,14 +192,14 @@ export const useWordListStore = create<WordListState>()(
 
           // Update word count in the list
           const updatedLists = get().lists.map(list =>
-            list.id === listId ? { ...list, wordCount: list.wordCount + 1 } : list
+            list.id === listId ? { ...list, word_count: list.word_count + 1 } : list
           );
 
           // Update current list if it's the one we're adding to
           const currentList = get().currentList;
           if (currentList && currentList.id === listId) {
             set({
-              currentList: { ...currentList, wordCount: currentList.wordCount + 1 }
+              currentList: { ...currentList, word_count: currentList.word_count + 1 }
             });
           }
 
@@ -234,7 +225,7 @@ export const useWordListStore = create<WordListState>()(
 
           // Update local state
           const updatedWords = get().currentWords.map(word =>
-            word.id === wordId ? { ...word, ...updates, updatedAt: Date.now() } : word
+            word.id === wordId ? { ...word, ...updates, updated_at: new Date().toISOString() } : word
           );
 
           set({ currentWords: updatedWords, isLoading: false });
@@ -254,7 +245,7 @@ export const useWordListStore = create<WordListState>()(
 
           // Update word count in the list
           const updatedLists = get().lists.map(list =>
-            list.id === listId ? { ...list, wordCount: Math.max(0, list.wordCount - 1) } : list
+            list.id === listId ? { ...list, word_count: Math.max(0, list.word_count - 1) } : list
           );
 
           // Update current list if it's the one we're removing from
@@ -263,7 +254,7 @@ export const useWordListStore = create<WordListState>()(
             set({
               currentList: {
                 ...currentList,
-                wordCount: Math.max(0, currentList.wordCount - 1)
+                word_count: Math.max(0, currentList.word_count - 1)
               }
             });
           }

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signIn, signUp, signOut, resetPassword, getCurrentUser, onAuthChanged } from '@/firebase/auth';
+import { signIn, signUp, signOut, resetPassword, getCurrentUser, onAuthStateChange } from '@/supabase/auth';
 
 interface User {
   uid: string;
@@ -38,10 +38,10 @@ export const useAuthStore = create<AuthState>()(
           const user = await signIn(email, password);
           set({
             user: {
-              uid: user.uid,
+              uid: user.id,
               email: user.email || '',
-              displayName: user.displayName || '',
-              photoURL: user.photoURL || '',
+              displayName: user.user_metadata?.name || '',
+              photoURL: user.user_metadata?.avatar_url || '',
             },
             isAuthenticated: true,
             isLoading: false
@@ -58,13 +58,13 @@ export const useAuthStore = create<AuthState>()(
       register: async (email, password, displayName) => {
         set({ isLoading: true, error: null });
         try {
-          const user = await signUp(email, password, displayName);
+          const user = await signUp(email, password);
           set({
             user: {
-              uid: user.uid,
+              uid: user.id,
               email: user.email || '',
-              displayName: user.displayName || '',
-              photoURL: user.photoURL || '',
+              displayName: displayName,
+              photoURL: '',
             },
             isAuthenticated: true,
             isLoading: false
@@ -110,15 +110,15 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           // Mevcut kullanıcıyı kontrol et
-          const currentUser = getCurrentUser();
+          const currentUser = await getCurrentUser();
 
           if (currentUser) {
             set({
               user: {
-                uid: currentUser.uid,
+                uid: currentUser.id,
                 email: currentUser.email || '',
-                displayName: currentUser.displayName || '',
-                photoURL: currentUser.photoURL || '',
+                displayName: currentUser.user_metadata?.name || '',
+                photoURL: currentUser.user_metadata?.avatar_url || '',
               },
               isAuthenticated: true
             });
@@ -127,14 +127,14 @@ export const useAuthStore = create<AuthState>()(
           }
 
           // Auth durumu değişikliklerini dinle
-          onAuthChanged((firebaseUser) => {
-            if (firebaseUser) {
+          onAuthStateChange((supabaseUser) => {
+            if (supabaseUser) {
               set({
                 user: {
-                  uid: firebaseUser.uid,
-                  email: firebaseUser.email || '',
-                  displayName: firebaseUser.displayName || '',
-                  photoURL: firebaseUser.photoURL || '',
+                  uid: supabaseUser.id,
+                  email: supabaseUser.email || '',
+                  displayName: supabaseUser.user_metadata?.name || '',
+                  photoURL: supabaseUser.user_metadata?.avatar_url || '',
                 },
                 isAuthenticated: true,
                 isLoading: false

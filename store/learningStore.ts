@@ -5,24 +5,14 @@ import {
   createSession,
   getSessions,
   updateSession,
-  getSessionsByList
-} from '@/firebase/learning';
+  getSessionsByList,
+  LearningSession as SupabaseLearningSession
+} from '@/supabase/learning';
 import { useAuthStore } from './authStore';
-import { useWordListStore } from './wordListStore';
+import { convertToUUID } from '@/supabase/auth';
+// import { useWordListStore } from './wordListStore';
 
-export interface LearningSession {
-  id: string;
-  listId: string;
-  userId: string;
-  date: number;
-  duration: number;
-  wordsStudied: number;
-  correctAnswers: number;
-  incorrectAnswers: number;
-  mode: 'learn' | 'test';
-  completed: boolean;
-  score?: number;
-}
+export type LearningSession = SupabaseLearningSession;
 
 export interface WordStats {
   wordId: string;
@@ -106,7 +96,8 @@ export const useLearningStore = create<LearningState>()(
 
         set({ isLoading: true, error: null });
         try {
-          const sessions = await getSessions(user.uid);
+          const uuid = convertToUUID(user.uid);
+          const sessions = await getSessions(uuid);
           set({ sessions, isLoading: false });
         } catch (error) {
           set({
@@ -124,7 +115,8 @@ export const useLearningStore = create<LearningState>()(
 
         set({ isLoading: true, error: null });
         try {
-          const sessions = await getSessionsByList(user.uid, listId);
+          const uuid = convertToUUID(user.uid);
+          const sessions = await getSessionsByList(uuid, listId);
           set({ isLoading: false });
           return sessions;
         } catch (error) {
@@ -144,30 +136,34 @@ export const useLearningStore = create<LearningState>()(
 
         set({ isLoading: true, error: null });
         try {
-          const sessionData: Omit<LearningSession, 'id'> = {
-            listId: data.listId,
-            userId: user.uid,
-            date: Date.now(),
+          const sessionData = {
+            list_id: data.listId,
+            user_id: convertToUUID(user.uid),
+            date: new Date().toISOString(),
             duration: 0,
-            wordsStudied: data.wordsStudied || 0,
-            correctAnswers: data.correctAnswers || 0,
-            incorrectAnswers: data.incorrectAnswers || 0,
+            words_studied: data.wordsStudied || 0,
+            correct_answers: data.correctAnswers || 0,
+            incorrect_answers: data.incorrectAnswers || 0,
             mode: data.mode,
             completed: false,
           };
 
           const sessionId = await createSession(sessionData);
 
-          const newSession: LearningSession = {
-            id: sessionId,
-            ...sessionData,
-          };
+          // Fetch the created session to get all fields
+          const uuid = convertToUUID(user.uid);
+          const sessions = await getSessions(uuid);
+          const newSession = sessions.find(s => s.id === sessionId);
 
-          set({
-            currentSession: newSession,
-            sessions: [...get().sessions, newSession],
-            isLoading: false
-          });
+          if (newSession) {
+            set({
+              currentSession: newSession,
+              sessions: [...get().sessions, newSession],
+              isLoading: false
+            });
+          } else {
+            set({ isLoading: false });
+          }
 
           return sessionId;
         } catch (error) {
@@ -257,8 +253,8 @@ export const useLearningStore = create<LearningState>()(
         // Calculate total stats
         const totalSessions = sessions.length;
         const totalTimeSpent = sessions.reduce((sum, session) => sum + session.duration, 0);
-        const totalWordsStudied = sessions.reduce((sum, session) => sum + session.wordsStudied, 0);
-        const totalCorrectAnswers = sessions.reduce((sum, session) => sum + session.correctAnswers, 0);
+        const totalWordsStudied = sessions.reduce((sum, session) => sum + session.words_studied, 0);
+        const totalCorrectAnswers = sessions.reduce((sum, session) => sum + session.correct_answers, 0);
 
         // Calculate streak
         const today = new Date();
@@ -266,14 +262,16 @@ export const useLearningStore = create<LearningState>()(
         const todayTimestamp = today.getTime();
 
         // Sort sessions by date (newest first)
-        const sortedSessions = [...sessions].sort((a, b) => b.date - a.date);
+        const sortedSessions = [...sessions].sort((a, b) => {
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
 
         // Get the most recent session date
-        const lastStudyDate = sortedSessions.length > 0 ? sortedSessions[0].date : 0;
+        const lastStudyDate = sortedSessions.length > 0 ? new Date(sortedSessions[0].date).getTime() : 0;
 
         // Calculate streak
         let streakDays = 0;
-        let currentDate = new Date(todayTimestamp);
+        // let currentDate = new Date(todayTimestamp);
 
         // Check if studied today
         const studiedToday = sortedSessions.some(session => {
