@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Tabs } from "expo-router";
-import { useRouter, useSegments, useRootNavigationState } from "expo-router";
+import { useRouter, useRootNavigationState } from "expo-router";
 import { Home, BookOpen, BarChart, Settings, Search } from "lucide-react-native";
 import { useAuthStore } from "@/store/authStore";
 import { useTheme } from "@/components/ThemeProvider";
@@ -12,15 +12,15 @@ export default function TabLayout() {
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { fetchLists } = useWordListStore();
   const { fetchSessions, updateStats } = useLearningStore();
-  const segments = useSegments();
+
   const navigationState = useRootNavigationState();
   const { colors } = useTheme();
-  
+
   // Check authentication status and redirect if needed
   useEffect(() => {
     // Only attempt to navigate once the navigation is ready
     if (!navigationState?.key) return;
-    
+
     if (!isAuthenticated && !authLoading) {
       router.replace("/(auth)/login");
     } else if (isAuthenticated) {
@@ -30,11 +30,11 @@ export default function TabLayout() {
       updateStats().catch(console.error);
     }
   }, [isAuthenticated, authLoading, navigationState?.key]);
-  
+
   if (!isAuthenticated) {
     return null;
   }
-  
+
   return (
     <Tabs
       screenOptions={{

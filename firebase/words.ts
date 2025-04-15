@@ -1,203 +1,251 @@
-// words.js
-import { supabase } from './config';
-import { updateWordCount } from './wordLists';
+// words.ts
+import {
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  serverTimestamp,
+  writeBatch
+} from 'firebase/firestore';
+import { db } from './config';
+// Word arayüzü
+export interface Word {
+  id: string;
+  term: string;
+  definition: string;
+  example?: string;
+  notes?: string;
+  pronunciation?: string;
+  imageUrl?: string;
+  listId?: string;
+  mastery?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Koleksiyon referansı
+const wordsCollection = collection(db, 'words');
+const listsCollection = collection(db, 'wordLists');
 
 // Kelime oluştur
-export const createWord = async (word) => {
+export const createWord = async (word: Partial<Word>): Promise<Word> => {
   try {
-    const { data, error } = await supabase
-      .from('words')
-      .insert([{
-        list_id: word.listId,
-        term: word.term,
-        definition: word.definition,
-        example: word.example,
-        pronunciation: word.pronunciation,
-        notes: word.notes,
-        image_url: word.imageUrl,
-        mastery: 0,
-        created_at: new Date(),
-        updated_at: new Date()
-      }])
-      .select();
-    
-    if (error) throw error;
-    
+    const wordRef = await addDoc(wordsCollection, {
+      listId: word.listId,
+      term: word.term,
+      definition: word.definition,
+      example: word.example || '',
+      pronunciation: word.pronunciation || '',
+      notes: word.notes || '',
+      imageUrl: word.imageUrl || '',
+      mastery: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
     // Kelime sayısını güncelle
-    await updateWordCountForList(word.listId);
-    
-    return { id: data[0].id, ...word };
-  } catch (error) {
+    if (word.listId) {
+      const listRef = doc(listsCollection, word.listId);
+      const listSnap = await getDoc(listRef);
+
+      if (listSnap.exists()) {
+        const listData = listSnap.data();
+        await updateDoc(listRef, {
+          wordCount: (listData.wordCount || 0) + 1,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+
+    return {
+      id: wordRef.id,
+      ...word,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    } as Word;
+  } catch (error: any) {
     console.error('Kelime oluşturulurken hata:', error.message);
     throw error;
   }
 };
 
-// Liste için kelimeleri getir
-export const getWords = async (listId) => {
-  try {
-    const { data, error } = await supabase
-      .from('words')
-      .select('*')
-      .eq('list_id', listId)
-      .order('created_at', { ascending: true });
-    
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Kelimeler alınırken hata:', error.message);
-    throw error;
-  }
-};
-
 // ID'ye göre kelime getir
-export const getWord = async (wordId) => {
+export const getWord = async (wordId: string): Promise<Word> => {
   try {
-    const { data, error } = await supabase
-      .from('words')
-      .select('*')
-      .eq('id', wordId)
-      .single();
-    
-    if (error) throw error;
-    return data;
-  } catch (error) {
+    const docRef = doc(wordsCollection, wordId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      throw new Error('Kelime bulunamadı');
+    }
+
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      term: data.term,
+      definition: data.definition,
+      example: data.example,
+      notes: data.notes,
+      pronunciation: data.pronunciation,
+      imageUrl: data.imageUrl,
+      mastery: data.mastery || 0,
+      createdAt: data.createdAt?.toMillis() || Date.now(),
+      updatedAt: data.updatedAt?.toMillis() || Date.now(),
+      listId: data.listId,
+    } as Word;
+  } catch (error: any) {
     console.error('Kelime alınırken hata:', error.message);
     throw error;
   }
 };
 
 // Kelime güncelle
-export const updateWord = async (wordId, data) => {
+export const updateWord = async (wordId: string, updates: Partial<Word>): Promise<Word> => {
   try {
-    const { error } = await supabase
-      .from('words')
-      .update({
-        ...data,
-        updated_at: new Date()
-      })
-      .eq('id', wordId);
-    
-    if (error) throw error;
-    return { id: wordId, ...data };
-  } catch (error) {
+    const docRef = doc(wordsCollection, wordId);
+
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: serverTimestamp()
+    });
+
+    return {
+      id: wordId,
+      ...updates,
+      updatedAt: Date.now()
+    } as Word;
+  } catch (error: any) {
     console.error('Kelime güncellenirken hata:', error.message);
     throw error;
   }
 };
 
 // Kelime sil
-export const deleteWord = async (wordId, listId) => {
+export const deleteWord = async (wordId: string, listId: string): Promise<void> => {
   try {
-    const { error } = await supabase
-      .from('words')
-      .delete()
-      .eq('id', wordId);
-    
-    if (error) throw error;
-    
+    const docRef = doc(wordsCollection, wordId);
+    await deleteDoc(docRef);
+
     // Kelime sayısını güncelle
-    await updateWordCountForList(listId);
-  } catch (error) {
+    const listRef = doc(listsCollection, listId);
+    const listSnap = await getDoc(listRef);
+
+    if (listSnap.exists()) {
+      const listData = listSnap.data();
+      await updateDoc(listRef, {
+        wordCount: Math.max((listData.wordCount || 0) - 1, 0),
+        updatedAt: serverTimestamp(),
+      });
+    }
+  } catch (error: any) {
     console.error('Kelime silinirken hata:', error.message);
     throw error;
   }
 };
 
 // Kelime başarı seviyesini güncelle
-export const updateWordMastery = async (wordId, mastery) => {
+export const updateWordMastery = async (wordId: string, mastery: number): Promise<void> => {
   try {
-    const { error } = await supabase
-      .from('words')
-      .update({
-        mastery: Math.max(0, Math.min(100, mastery)),
-        updated_at: new Date()
-      })
-      .eq('id', wordId);
-    
-    if (error) throw error;
-  } catch (error) {
+    const docRef = doc(wordsCollection, wordId);
+
+    await updateDoc(docRef, {
+      mastery: Math.max(0, Math.min(100, mastery)),
+      updatedAt: serverTimestamp()
+    });
+  } catch (error: any) {
     console.error('Kelime başarısı güncellenirken hata:', error.message);
     throw error;
   }
 };
 
 // Toplu kelime başarısı güncelleme
-export const batchUpdateWordMastery = async (updates) => {
+export const batchUpdateWordMastery = async (updates: {wordId: string, mastery: number}[]): Promise<void> => {
   try {
-    // Supabase'de toplu güncelleme için işlemleri sırayla yapalım
-    for (const { wordId, mastery } of updates) {
-      const { error } = await supabase
-        .from('words')
-        .update({
-          mastery: Math.max(0, Math.min(100, mastery)),
-          updated_at: new Date()
-        })
-        .eq('id', wordId);
-      
-      if (error) throw error;
-    }
-  } catch (error) {
+    const batch = writeBatch(db);
+
+    updates.forEach(({ wordId, mastery }) => {
+      const docRef = doc(wordsCollection, wordId);
+      batch.update(docRef, {
+        mastery: Math.max(0, Math.min(100, mastery)),
+        updatedAt: serverTimestamp()
+      });
+    });
+
+    await batch.commit();
+  } catch (error: any) {
     console.error('Toplu kelime başarısı güncellenirken hata:', error.message);
     throw error;
   }
 };
 
-// Bir liste için kelime sayısını güncelle
-const updateWordCountForList = async (listId) => {
-  try {
-    // Önce kelime sayısını hesapla
-    const { count, error } = await supabase
-      .from('words')
-      .select('*', { count: 'exact', head: true })
-      .eq('list_id', listId);
-    
-    if (error) throw error;
-    
-    // Sonra liste tablosunu güncelle
-    await updateWordCount(listId, count);
-  } catch (error) {
-    console.error('Kelime sayısı güncellenirken hata:', error.message);
-  }
-};
-
 // Kelime ara
-export const searchWords = async (userId, searchTerm) => {
+export const searchWords = async (userId: string, searchTerm: string): Promise<any[]> => {
   try {
     // Önce kullanıcının listelerini alalım
-    const { data: lists, error: listsError } = await supabase
-      .from('word_lists')
-      .select('id, name')
-      .eq('user_id', userId);
-    
-    if (listsError) throw listsError;
-    
+    const q = query(
+      listsCollection,
+      where('userId', '==', userId)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const lists: {id: string, name: string}[] = [];
+
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      lists.push({
+        id: doc.id,
+        name: data.name
+      });
+    });
+
     if (lists.length === 0) {
       return [];
     }
-    
+
     // Listedeki kelimeleri arayalım
     const listIds = lists.map(list => list.id);
-    
-    const { data: words, error: wordsError } = await supabase
-      .from('words')
-      .select('*')
-      .in('list_id', listIds)
-      .or(`term.ilike.%${searchTerm}%,definition.ilike.%${searchTerm}%,example.ilike.%${searchTerm}%`);
-    
-    if (wordsError) throw wordsError;
-    
-    // Kelimelere liste adlarını ekleyelim
-    const listMap = {};
-    lists.forEach(list => {
-      listMap[list.id] = list.name;
-    });
-    
-    return words.map(word => ({
-      ...word,
-      listName: listMap[word.list_id]
-    }));
-  } catch (error) {
+    const results: any[] = [];
+
+    // Her liste için ayrı sorgu yapalım
+    for (const listId of listIds) {
+      const wordsQuery = query(
+        wordsCollection,
+        where('listId', '==', listId)
+      );
+
+      const wordsSnapshot = await getDocs(wordsQuery);
+
+      wordsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        const term = data.term?.toLowerCase() || '';
+        const definition = data.definition?.toLowerCase() || '';
+        const example = data.example?.toLowerCase() || '';
+        const search = searchTerm.toLowerCase();
+
+        if (term.includes(search) || definition.includes(search) || example.includes(search)) {
+          // Liste adını bulalım
+          const listName = lists.find(l => l.id === listId)?.name || '';
+
+          results.push({
+            id: doc.id,
+            term: data.term,
+            definition: data.definition,
+            example: data.example,
+            listId: data.listId,
+            listName: listName,
+            createdAt: data.createdAt?.toMillis() || Date.now(),
+          });
+        }
+      });
+    }
+
+    return results;
+  } catch (error: any) {
     console.error('Kelime aranırken hata:', error.message);
     throw error;
   }

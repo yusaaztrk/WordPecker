@@ -1,43 +1,67 @@
-// auth.js
-import { supabase } from './config';
+// auth.ts
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  updateProfile,
+  onAuthStateChanged,
+  User
+} from 'firebase/auth';
+import { auth } from './config';
 
 // Giriş yap
-export const signIn = async (email, password) => {
+export const signIn = async (email: string, password: string): Promise<User> => {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    
-    if (error) throw error;
-    
-    console.log("Oturum bilgisi:", data.session); // Debug için
-    return data.user;
-  } catch (error) {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
+  } catch (error: any) {
     console.error('Giriş yapılırken hata:', error.message);
     throw error;
   }
 };
 
-// Mevcut kullanıcıyı al
-export const getCurrentUser = async () => {
+// Kayıt ol
+export const signUp = async (email: string, password: string, displayName: string): Promise<User> => {
   try {
-    // Önce session kontrolü yap
-    const { data: sessionData } = await supabase.auth.getSession();
-    
-    // Session yoksa null dön
-    if (!sessionData.session) {
-      console.log("Aktif oturum bulunamadı");
-      return null;
-    }
-    
-    // Session varsa kullanıcı bilgilerini al
-    const { data, error } = await supabase.auth.getUser();
-    
-    if (error) throw error;
-    return data.user;
-  } catch (error) {
-    console.error('Kullanıcı alınırken hata:', error.message);
-    return null;
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+    // Kullanıcı profilini güncelle
+    await updateProfile(userCredential.user, { displayName });
+
+    return userCredential.user;
+  } catch (error: any) {
+    console.error('Kayıt olunurken hata:', error.message);
+    throw error;
   }
+};
+
+// Çıkış yap
+export const signOut = async (): Promise<void> => {
+  try {
+    await firebaseSignOut(auth);
+  } catch (error: any) {
+    console.error('Çıkış yapılırken hata:', error.message);
+    throw error;
+  }
+};
+
+// Şifre sıfırlama
+export const resetPassword = async (email: string): Promise<void> => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error: any) {
+    console.error('Şifre sıfırlanırken hata:', error.message);
+    throw error;
+  }
+};
+
+// Mevcut kullanıcıyı al
+export const getCurrentUser = (): User | null => {
+  return auth.currentUser;
+};
+
+// Auth durumu değişikliklerini dinle
+export const onAuthChanged = (callback: (user: User | null) => void): (() => void) => {
+  return onAuthStateChanged(auth, callback);
 };

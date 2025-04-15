@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signIn, signUp, signOut, resetPassword, getCurrentUser } from '@/firebase/auth';
+import { signIn, signUp, signOut, resetPassword, getCurrentUser, onAuthChanged } from '@/firebase/auth';
 
 interface User {
   uid: string;
@@ -15,7 +15,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  
+
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -26,116 +26,169 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       isAuthenticated: false,
       isLoading: true,
       error: null,
-      
+
       login: async (email, password) => {
         set({ isLoading: true, error: null });
         try {
           const user = await signIn(email, password);
-          set({ 
+          set({
             user: {
               uid: user.uid,
               email: user.email || '',
               displayName: user.displayName || '',
               photoURL: user.photoURL || '',
-            }, 
-            isAuthenticated: true, 
-            isLoading: false 
+            },
+            isAuthenticated: true,
+            isLoading: false
           });
         } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'Login failed', 
-            isLoading: false 
+          set({
+            error: error instanceof Error ? error.message : 'Login failed',
+            isLoading: false
           });
           throw error;
         }
       },
-      
+
       register: async (email, password, displayName) => {
         set({ isLoading: true, error: null });
         try {
           const user = await signUp(email, password, displayName);
-          set({ 
+          set({
             user: {
               uid: user.uid,
               email: user.email || '',
               displayName: user.displayName || '',
               photoURL: user.photoURL || '',
-            }, 
-            isAuthenticated: true, 
-            isLoading: false 
+            },
+            isAuthenticated: true,
+            isLoading: false
           });
         } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'Registration failed', 
-            isLoading: false 
+          set({
+            error: error instanceof Error ? error.message : 'Registration failed',
+            isLoading: false
           });
           throw error;
         }
       },
-      
+
       logout: async () => {
         set({ isLoading: true, error: null });
         try {
           await signOut();
           set({ user: null, isAuthenticated: false, isLoading: false });
         } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'Logout failed', 
-            isLoading: false 
+          set({
+            error: error instanceof Error ? error.message : 'Logout failed',
+            isLoading: false
           });
           throw error;
         }
       },
-      
+
       resetPassword: async (email) => {
         set({ isLoading: true, error: null });
         try {
           await resetPassword(email);
           set({ isLoading: false });
         } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'Password reset failed', 
-            isLoading: false 
+          set({
+            error: error instanceof Error ? error.message : 'Password reset failed',
+            isLoading: false
           });
           throw error;
         }
       },
-      
+
       checkAuth: async () => {
         set({ isLoading: true });
         try {
-          const user = await getCurrentUser();
-          if (user) {
-            set({ 
+          // Mevcut kullanıcıyı kontrol et
+          const currentUser = getCurrentUser();
+
+          if (currentUser) {
+            set({
               user: {
-                uid: user.uid,
-                email: user.email || '',
-                displayName: user.displayName || '',
-                photoURL: user.photoURL || '',
-              }, 
-              isAuthenticated: true 
+                uid: currentUser.uid,
+                email: currentUser.email || '',
+                displayName: currentUser.displayName || '',
+                photoURL: currentUser.photoURL || '',
+              },
+              isAuthenticated: true
             });
           } else {
-            set({ user: null, isAuthenticated: false });
+            // GELİŞTİRME MODU: Kimlik doğrulama olmadan test için
+            // Gerçek uygulamada bu kısmı kaldırın
+            console.log('GELİŞTİRME MODU: Test kullanıcısı oluşturuluyor');
+            set({
+              user: {
+                uid: 'test-user-id',
+                email: 'test@example.com',
+                displayName: 'Test Kullanıcı',
+                photoURL: '',
+              },
+              isAuthenticated: true
+            });
+            // Normal davranış (geliştirme modunda yorum satırına alın)
+            // set({ user: null, isAuthenticated: false });
           }
+
+          // Auth durumu değişikliklerini dinle
+          try {
+            onAuthChanged((firebaseUser) => {
+              if (firebaseUser) {
+                set({
+                  user: {
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email || '',
+                    displayName: firebaseUser.displayName || '',
+                    photoURL: firebaseUser.photoURL || '',
+                  },
+                  isAuthenticated: true,
+                  isLoading: false
+                });
+              } else {
+                // GELİŞTİRME MODU: Kimlik doğrulama olmadan test için
+                // Gerçek uygulamada bu kısmı kaldırın
+                // set({ user: null, isAuthenticated: false, isLoading: false });
+              }
+            });
+          } catch (authError) {
+            console.log('Auth dinleme hatası:', authError);
+            // Hata durumunda geliştirme modunda devam et
+          }
+
         } catch (error) {
-          set({ user: null, isAuthenticated: false });
+          console.log('checkAuth hatası:', error);
+          // GELİŞTİRME MODU: Kimlik doğrulama olmadan test için
+          set({
+            user: {
+              uid: 'test-user-id',
+              email: 'test@example.com',
+              displayName: 'Test Kullanıcı',
+              photoURL: '',
+            },
+            isAuthenticated: true
+          });
+          // Normal davranış (geliştirme modunda yorum satırına alın)
+          // set({ user: null, isAuthenticated: false });
         } finally {
           set({ isLoading: false });
         }
       },
-      
+
       clearError: () => set({ error: null }),
     }),
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
