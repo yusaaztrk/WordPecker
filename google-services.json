@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "395218703678",
+    "project_id": "worldwecker",
+    "storage_bucket": "worldwecker.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:395218703678:android:fa59726393d27db507486f",
+        "android_client_info": {
+          "package_name": "com.company.worldwecker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDn4wHxwuC0CUXTftUVuBFxyMLviXrRRkY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
